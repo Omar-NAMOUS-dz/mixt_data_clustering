@@ -1,0 +1,2 @@
+- add categorical feature selection to "mc-one-hot".
+- don't apply standard scaling to categorical features in "mc-one-hot".

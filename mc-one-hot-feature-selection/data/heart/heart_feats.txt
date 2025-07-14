@@ -1,0 +1,3 @@
+sex cp fbs restecg exang slope ca thal
+age trestbps chol thalach oldpeak
+target

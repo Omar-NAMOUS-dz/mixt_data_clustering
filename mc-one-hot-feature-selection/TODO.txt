@@ -1,0 +1,5 @@
+- Use drop_first=True with get_dummies().
+- Use with_std=False with StandardScaler().
+- Use Tensorflow for train_loop().
+- Change tf.linalg.norm().
+- Update P only every few iterations.

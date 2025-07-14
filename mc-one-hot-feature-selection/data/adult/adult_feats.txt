@@ -1,0 +1,3 @@
+workclass education marital-status occupation relationship race sex native-country
+age fnlwgt education-num capital-gain capital-loss hours-per-week
+target
