@@ -80,7 +80,7 @@ def similarity(data, v1, v2):
         for c in range(n_classes):
             indices = np.where(labels == c)[0]
             cluster = data_v2.iloc[indices]
-            s += cluster.var()
+            s += (cluster.shape[0] / labels.shape[0]) * cluster.var()
         return s / total_var
     
     if v1 in data['cat_feats'] and v2 in data['cat_feats']:
@@ -95,7 +95,7 @@ def similarity(data, v1, v2):
             proportions = cluster[v2].value_counts(normalize=True)
             gini_impurity = 1 - (proportions ** 2).sum()
             s += (cluster.shape[0] / new_d.shape[0]) * gini_impurity
-        return 2 * s
+        return s
     
     if v1 in data['num_feats'] and v2 in data['cat_feats']:
         temp = v1
@@ -105,14 +105,17 @@ def similarity(data, v1, v2):
     if v1 in data['cat_feats'] and v2 in data['num_feats']:
         data_v1 = d[v1]
         data_v2 = d[v2]
-        total_var = data_v2.var()
+        total_var = data_v2.var(ddof=0)
         A = data_v1.unique()
         new_d = pd.concat([data_v1, data_v2], axis=1)
         
         s = 0.0
         for a in A:
             cluster = new_d.loc[new_d[v1] == a]
-            s += cluster.var()
+            cluster = cluster[v2]
+            s += (cluster.shape[0] / new_d.shape[0]) * cluster.var(ddof=0)
+        #print("s = ", s)
+        #print("total var = ", total_var)
         return s / total_var
     
 
@@ -131,5 +134,7 @@ def similarity_matrix(data):
         for v2 in sim:
             try:
                 print(f'{v1} {v2} : {sim[v1][v2]:.2f}')
+                #pass
             except:
                 print(f'{v1} {v2} : {sim[v1][v2]}')
+                #pass

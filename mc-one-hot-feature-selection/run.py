@@ -13,13 +13,11 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('dataset', 'heart', 'Dataset to use (heart, adult, credit, derma, bands, synth1, synth2 or synth3).')
 flags.DEFINE_integer('max_iter', 50, 'Number of iterations of the algorithm.')
-flags.DEFINE_integer('inner_iter', 5, 'Number of iterations before updating features weights.')
 flags.DEFINE_float('tol', 1e-7, 'Tolerance threshold of convergence.')
-flags.DEFINE_integer('runs', 10, 'Number of runs.')
+flags.DEFINE_integer('runs', 1, 'Number of runs.')
 
 dataset = FLAGS.dataset
 max_iter = FLAGS.max_iter
-inner_iter = FLAGS.inner_iter
 tolerance = FLAGS.tol
 runs = FLAGS.runs
 
@@ -37,7 +35,7 @@ metrics['time'] = []
 for run in range(runs):
     t0 = time()
 
-    Z, F, P, XW, losses = mc(X, n_classes=n_classes, proj_dim=n_classes + 1, max_iter=max_iter, inner_iter=inner_iter, tolerance=tolerance)
+    Z, F, P, XW, losses = mc(X, n_classes=n_classes, proj_dim=n_classes + 1, max_iter=max_iter, tolerance=tolerance)
 
     metrics['time'].append(time()-t0)
     metrics['acc'].append(clustering_accuracy(labels, Z))

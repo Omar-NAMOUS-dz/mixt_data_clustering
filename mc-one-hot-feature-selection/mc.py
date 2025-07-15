@@ -16,7 +16,7 @@ def init_G_F(XW, n_classes):
     return G, F
 
 def init_P(X):
-    P = np.identity(X.shape[1], dtype=float)
+    P = (1 / X.shape[1]) * np.identity(X.shape[1], dtype=float)
     return P
 
 
@@ -35,66 +35,67 @@ def update_rule_F(XW, G, n_classes):
     F = tf.math.unsorted_segment_mean(XW, G, n_classes)
     return F
 
-def update_rule_P(X, G, P, n_classes):
-    var = np.zeros(X.shape[1])
-    diag_p = np.diag(P).copy()
-    for l in range(n_classes):
-        indices = np.where(G == l)
-        cluster = X[indices]
+def update_rule_P(XP, W_t, G, F, n_classes):
+    W = W_t.numpy()
+    intra_variance = np.zeros(XP.shape[1])
+    total_variance = np.zeros(XP.shape[1])
+    for v in range(XP.shape[1]):
+        
         #print("cluster = ", l , " len = ", len(cluster), " var = ", np.var(cluster, axis=0))
-        var += np.var(cluster, axis=0)
+        variable = XP[:, v].reshape(-1, 1)
+        w = W[v, :].reshape(1, -1)
+        proj_variable = variable@w
+        center = np.mean(proj_variable, axis=0)
+        centered_proj_variable = proj_variable - center
+        squared_norms = np.sum(centered_proj_variable**2, axis=1)
+        total_variance[v] = np.sum(squared_norms)/XP.shape[0]
 
-    var /= n_classes
-    m = np.argmax(var)
-    print("m = ", m)
-    print("var[m] = ", var[m])
-    diag_p[m] = 0.0
-    #print(" diag_p = ", diag_p)
-    P = np.diag(diag_p)
+        for l in range(n_classes):
+            indices = np.where(G == l)
+            cluster_proj_variable = proj_variable[indices]
+            cluster_center = np.mean(cluster_proj_variable, axis=0)
+            centered_cluster_proj_variable = cluster_proj_variable - cluster_center
+            cluster_squared_norms = np.sum(centered_cluster_proj_variable**2, axis=1)
+            cluster_variance = np.sum(cluster_squared_norms)/cluster_squared_norms.shape[0]
+            intra_variance[v] += cluster_variance * (cluster_squared_norms.shape[0] / XP.shape[0])
+
+    p = 1 - (intra_variance / total_variance)
+    p = p / np.sum(p)
+    P = np.diag(p)
     return P
 
-def constr_error(X, W):
-    W2 = np.array(W)
-    err = np.linalg.norm(X - X @ W2 @ W2.T)
-    return err
 
-def cluster_error(X, F, G, W):
-    #print(X[:10, :10])
-    err = np.linalg.norm(X@W - np.take(F, G, axis=0))
-    return err
-
-def train_loop(X, P, F, G, n_classes, max_iter, inner_iter, tolerance):
+def train_loop(X, P, F, G, n_classes, max_iter, tolerance):
 
     losses = []
     prev_loss = None
     for _ in range(max_iter):
-        X = X@P
-        W = init_W(X, n_classes + 1)
-        XW = X@W
-        G, F = init_G_F(XW, n_classes)
-        for _ in range(inner_iter):
-            W = update_rule_W(X, F, G)
-            XW = X@W
-            G = update_rule_G(XW, F)
-            F = update_rule_F(XW, G, n_classes)
-            loss = tf.linalg.norm(X - tf.gather(F @ tf.transpose(W), G))
-            losses.append(loss)
-            prev_loss = loss
-            #if prev_loss is not None and abs(prev_loss - loss) < tolerance:
-            #    break
-
-        P = update_rule_P(X, G, P, n_classes)
-        
+        XP = X@P
+        W = update_rule_W(XP, F, G)
+        XPW = XP@W
+        G = update_rule_G(XPW, F)
+        F = update_rule_F(XPW, G, n_classes)
+        P = update_rule_P(XP, W, G, F, n_classes)
+        loss = tf.linalg.norm(X - tf.gather(F @ tf.transpose(W), G))
+        losses.append(loss)
+        prev_loss = loss
+        #if prev_loss is not None and abs(prev_loss - loss) < tolerance:
+        #    break
 
         
     
-    return G, F, P, XW, losses
+    return G, F, P, XPW, losses
 
 
 def mc(X, proj_dim, n_classes, max_iter=50, inner_iter=5, tolerance=0):
     P = init_P(X)
-    W = init_W(X, proj_dim)
-    XW = X@W
-    G, F = init_G_F(XW, n_classes)
-    G, F, P, XW, loss_history = train_loop(X, P, F, G, n_classes, max_iter, inner_iter, tolerance)
-    return G, F, P, XW, loss_history
+    
+    print(P.shape[0])
+    print(X.shape[0])
+
+    XP = X@P
+    W = init_W(XP, proj_dim)
+    XPW = XP@W
+    G, F = init_G_F(XPW, n_classes)
+    G, F, P, XPW, loss_history = train_loop(X, P, F, G, n_classes, max_iter, tolerance)
+    return G, F, P, XPW, loss_history

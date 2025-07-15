@@ -20,9 +20,9 @@ def datagen(dataset):
         labels = LabelEncoder().fit_transform(labels)
         n_classes = len(np.unique(labels))
 
-        num = data[num_feats].to_numpy()
+        num = data[num_feats].to_numpy(dtype=float)
         cat = pd.get_dummies(data[cat_feats], drop_first=True, columns=cat_feats, dtype=float).to_numpy()
-
+        #num = StandardScaler().fit_transform(num)
         X = np.concatenate((num, cat), axis=1)
         X = StandardScaler().fit_transform(X)
 
