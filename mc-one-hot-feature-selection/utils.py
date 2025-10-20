@@ -10,9 +10,6 @@ def datagen(dataset):
     with open(f'./data/{dataset}/{dataset}_feats.txt','r') as f:
         cat_feats = f.readline().strip().split()
 
-        #print(data.columns)
-        #print(cat_feats)
-
         num_feats = f.readline().strip().split()
         target_feat = f.readline().strip()
 
@@ -22,9 +19,10 @@ def datagen(dataset):
 
         num = data[num_feats].to_numpy(dtype=float)
         cat = pd.get_dummies(data[cat_feats], drop_first=True, columns=cat_feats, dtype=float).to_numpy()
-        #num = StandardScaler().fit_transform(num)
-        X = np.concatenate((num, cat), axis=1)
-        X = StandardScaler().fit_transform(X)
+
+        num = StandardScaler().fit_transform(num)
+        #cat = StandardScaler().fit_transform(cat)
+        X = np.concatenate((cat, num), axis=1)
 
         print(len(labels))
 
