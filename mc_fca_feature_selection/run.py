@@ -15,13 +15,11 @@ flags.DEFINE_string('dataset', 'heart', 'Dataset to use (heart, adult, credit, d
 flags.DEFINE_integer('max_iter', 50, 'Number of iterations of the algorithm.')
 flags.DEFINE_float('tol', 1e-7, 'Tolerance threshold of convergence.')
 flags.DEFINE_integer('runs', 1, 'Number of runs.')
-flags.DEFINE_integer('inner_iter', 1, 'Number of iterations before updating the variables weights.')
 
 dataset = FLAGS.dataset
 max_iter = FLAGS.max_iter
 tolerance = FLAGS.tol
 runs = FLAGS.runs
-inner_iter = FLAGS.inner_iter
 
 print('-----------------', dataset, '-----------------')
 X, labels, n_classes = datagen(dataset)
@@ -37,7 +35,7 @@ metrics['time'] = []
 for run in range(runs):
     t0 = time()
 
-    Z, F, P, XW, losses = mc(X, n_classes=n_classes, proj_dim=n_classes + 1, max_iter=max_iter, tolerance=tolerance, inner_iter=inner_iter)
+    Z, F, P, XW, losses = mc(X, n_classes=n_classes, proj_dim=n_classes + 1, max_iter=max_iter, tolerance=tolerance)
 
     metrics['time'].append(time()-t0)
     metrics['acc'].append(clustering_accuracy(labels, Z))

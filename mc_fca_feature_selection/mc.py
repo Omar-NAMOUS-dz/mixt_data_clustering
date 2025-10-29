@@ -20,8 +20,8 @@ def init_P(X):
     return P
 
 
-def update_rule_W(X, P, F, G):
-    _, U, V = tf.linalg.svd(P @ tf.transpose(X) @ tf.gather(F, G), full_matrices=False)
+def update_rule_W(X, F, G):
+    _, U, V = tf.linalg.svd(tf.transpose(X) @ tf.gather(F, G), full_matrices=False)
     W = U @ tf.transpose(V)
     return W
 
@@ -36,8 +36,7 @@ def update_rule_F(XW, G, n_classes):
     return F
 
 
-def update_rule_P(XP, W_t, G, F, n_classes, p_history, mask, alpha):
-    #print("XP = ", XP)
+def update_rule_P(XP, W_t, G, F, n_classes):
 
     num_samples = XP.shape[0]
     num_variables = XP.shape[1]
@@ -48,10 +47,8 @@ def update_rule_P(XP, W_t, G, F, n_classes, p_history, mask, alpha):
     for v in range(num_variables):
         
         variable = XP[:, v].reshape(-1, 1)
-        #if v == 0: print("1st var = ", variable)
         w = W[v, :].reshape(1, -1)
         proj_variable = variable@w
-        #if v == 0: print("projected 1st var = ", proj_variable)
         center = np.mean(proj_variable, axis=0)
         centered_proj_variable = proj_variable - center
         squared_norms = np.sum(centered_proj_variable**2, axis=1)
@@ -66,67 +63,45 @@ def update_rule_P(XP, W_t, G, F, n_classes, p_history, mask, alpha):
             cluster_variance = np.sum(cluster_squared_norms)/cluster_squared_norms.shape[0]
             intra_variance[v] += cluster_variance * (cluster_squared_norms.shape[0] / num_samples)
 
-    #p = 1 - (intra_variance / total_variance)
-    #p = 1.0 / intra_variance
+    #p = 1.0 - (intra_variance / total_variance)
+    #p = 1.0 - intra_variance
+    alpha = 5.0
+    p = np.exp(-alpha * intra_variance)
 
-    alpha += 1
+    p = p * (num_variables / np.sum(p))
 
-    p_current = np.exp(intra_variance * -1 * alpha)
-
-    p_history += p_current
-
-    num_relevant_variables = mask.sum()
-
-    p_normalized = p_history * mask
-
-    p_normalized = p_normalized * (num_relevant_variables / np.sum(p_normalized))
-
-    p = p_normalized
-
-    treshold = 0.5
-    mask = np.array([1.0 if p[i] > treshold else 0.0 for i in range(num_variables)])
-
-    #print("intra_variance = \n", intra_variance[:10], "\n", intra_variance[-10:])
-    #print("p_history = \n", p_history[:10], "\n", p_history[-10:])
     print("p = \n", p)
+
     P = np.diag(p)
-    return P, p_history, mask, alpha
+    return P
 
 
-def train_loop(X, P, F, G, n_classes, max_iter, tolerance, inner_iter):
+def train_loop(X, P, F, G, n_classes, max_iter, tolerance):
 
     losses = []
     prev_loss = None
-    p_history = np.array([0.0 for _ in range(X.shape[1])])
-    mask = np.array([1.0 for _ in range(X.shape[1])])
-    alpha = 1.0
-
+    XP = X@P
     for _ in range(max_iter):
-        for _ in range(inner_iter):
-            W = update_rule_W(X, P, F, G)
-            XW = X@W
-            G = update_rule_G(XW, F)
-            F = update_rule_F(XW, G, n_classes)
-            
-            loss = tf.linalg.norm(X - tf.gather(F @ tf.transpose(W), G))
-            losses.append(loss)
-            prev_loss = loss
-            #if prev_loss is not None and abs(prev_loss - loss) < tolerance:
-            #    break
+        W = update_rule_W(XP, F, G)
+        XW = X@W
+        G = update_rule_G(XW, F)
+        F = update_rule_F(XW, G, n_classes)
+        
+        loss = tf.linalg.norm(X - tf.gather(F @ tf.transpose(W), G))
+        losses.append(loss)
+        prev_loss = loss
+        #if prev_loss is not None and abs(prev_loss - loss) < tolerance:
+        #    break
 
-        P, p_history, mask, alpha = update_rule_P(X, W, G, F, n_classes, p_history, mask, alpha)
-    
+        P = update_rule_P(X, W, G, F, n_classes)
+        XP = X @ P
     return G, F, P, XW, losses
 
 
-def mc(X, proj_dim, n_classes, max_iter=50, tolerance=0, inner_iter=5):
+def mc(X, proj_dim, n_classes, max_iter=50, tolerance=0):
     P = init_P(X)
-    
-    print("P #rows: ", P.shape[0])
-    print("X #rows: ", X.shape[0])
-
     W = init_W(X, proj_dim)
     XW = X@W
     G, F = init_G_F(XW, n_classes)
-    G, F, P, XW, loss_history = train_loop(X, P, F, G, n_classes, max_iter, tolerance, inner_iter)
+    G, F, P, XW, loss_history = train_loop(X, P, F, G, n_classes, max_iter, tolerance)
     return G, F, P, XW, loss_history

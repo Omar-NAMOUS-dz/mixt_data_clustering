@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn import metrics
 from scipy.optimize import linear_sum_assignment
+from prince import MCA
 
 def datagen(dataset):
     data = pd.read_csv(f'./data/{dataset}/{dataset}.csv')
@@ -18,20 +19,25 @@ def datagen(dataset):
         n_classes = len(np.unique(labels))
 
         num = data[num_feats].to_numpy(dtype=float)
-        cat = pd.get_dummies(data[cat_feats], drop_first=True, columns=cat_feats, dtype=float).to_numpy()
+        num = StandardScaler().fit_transform(num)
 
-        #num = StandardScaler().fit_transform(num)
-        
-        col_min = num.min(axis=0)
-        col_max = num.max(axis=0)
-        denom = col_max - col_min
-        denom[denom == 0] = 1.0
+        m = sum([len(data[cat_feat].unique()) for cat_feat in cat_feats])
+        d = len(cat_feats)
+        mca = MCA(
+                    n_components= m - d,
+                    n_iter=3,
+                    copy=True,
+                    check_input=True,
+                    engine='sklearn',
+                    random_state=42
+                )
+        mca = mca.fit(data[cat_feats])
+        cat = mca.transform(data[cat_feats])
+        cat = StandardScaler().fit_transform(cat)
 
-        num = (num - col_min) / denom
-        
         X = np.concatenate((cat, num), axis=1)
 
-        print(len(labels))
+        print(n_classes)
 
     return X, labels, n_classes
 

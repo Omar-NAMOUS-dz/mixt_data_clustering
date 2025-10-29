@@ -1,0 +1,10 @@
+
+def constr_error(X, W):
+    W2 = np.array(W)
+    err = np.linalg.norm(X - X @ W2 @ W2.T)
+    return err
+
+def cluster_error(X, F, G, W):
+    #print(X[:10, :10])
+    err = np.linalg.norm(X@W - np.take(F, G, axis=0))
+    return err

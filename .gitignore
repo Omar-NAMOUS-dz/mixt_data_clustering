@@ -1,4 +1,2 @@
-mc-one-hot-feature-selection/venv/*
-mc-one-hot-feature-selection-2/venv/*
-mc-one-hot/venv/*
+*/*venv/*
 TODO.txt
